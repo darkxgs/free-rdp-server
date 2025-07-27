@@ -11,7 +11,7 @@ jobs:
           Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
           Expand-Archive ngrok.zip -DestinationPath ngrok
           $env:Path += ";$PWD\ngrok"
-          .\ngrok\ngrok.exe authtoken YOUR_AUTH_TOKEN
+          .\ngrok\ngrok.exe authtoken NGROK_AUTH_TOKEN
 
       - name: Enable RDP and Start ngrok tunnel
         run: |
