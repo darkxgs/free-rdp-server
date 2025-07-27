@@ -6,47 +6,16 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Download and setup ngrok
+      - name: Download ngrok
         run: |
           Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
-          Expand-Archive ngrok.zip -DestinationPath ngrok
-          .\ngrok\ngrok.exe authtoken YOUR_AUTH_TOKEN
+          Expand-Archive ngrok.zip
+          ./ngrok.exe authtoken NGROK_AUTH_TOKEN
 
-      - name: Enable RDP and create user
+      - name: Enable RDP
         run: |
           net user kamel123 MyStrong123 /add
           net localgroup administrators kamel123 /add
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-
-      - name: Start ngrok and show RDP info
-        run: |
-          Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389" -WindowStyle Hidden
-          
-          # انتظر ngrok لحد ما يفتح المنفذ 4040 (واجهة REST)
-          $maxRetries = 15
-          $retry = 0
-          do {
-            Start-Sleep -Seconds 2
-            try {
-              $response = Invoke-RestMethod -Uri http://127.0.0.1:4040/api/tunnels -ErrorAction Stop
-              $ready = $true
-            } catch {
-              $ready = $false
-              $retry++
-            }
-          } while (-not $ready -and $retry -lt $maxRetries)
-
-          if (-not $ready) {
-            Write-Error "Ngrok لم يبدأ في الوقت المناسب."
-            exit 1
-          }
-
-          $rdpUrl = $response.tunnels[0].public_url
-          $cleanUrl = $rdpUrl -replace 'tcp://',''
-          
-          Write-Host ""
-          Write-Host "🎉 RDP is ready!"
-          Write-Host "🔗 RDP Address: $cleanUrl"
-          Write-Host "👤 Username: kamel123"
-          Write-Host "🔐 Password: MyStrong123"
+          ./ngrok.exe tcp 3389
