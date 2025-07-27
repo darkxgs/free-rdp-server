@@ -15,16 +15,33 @@ jobs:
         env:
           NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-      - name: Enable RDP and Start ngrok
+      - name: Enable RDP and Start ngrok tunnel in background
         run: |
           net user kamel123 MyStrong123 /add
           net localgroup administrators kamel123 /add
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Start-Process -NoNewWindow -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
+          Start-Job -ScriptBlock { & "$PWD\ngrok\ngrok.exe" tcp 3389 }
+          Start-Sleep -Seconds 15
 
-      - name: Wait for tunnel and display RDP address
+      - name: Get ngrok tunnel info
         run: |
-          Start-Sleep -Seconds 10
-          $url = Invoke-RestMethod http://127.0.0.1:4040/api/tunnels | Select-Object -ExpandProperty tunnels | Where-Object {$_.proto -eq "tcp"} | Select-Object -ExpandProperty public_url
+          $retries = 5
+          $url = ""
+          for ($i = 0; $i -lt $retries; $i++) {
+            try {
+              $tunnels = Invoke-RestMethod http://127.0.0.1:4040/api/tunnels
+              $url = $tunnels.tunnels | Where-Object {$_.proto -eq "tcp"} | Select-Object -ExpandProperty public_url
+              if ($url) { break }
+            } catch {
+              Start-Sleep -Seconds 5
+            }
+          }
+
+          if (-not $url) {
+            Write-Error "❌ ngrok tunnel not found. Exiting."
+            exit 1
+          }
+
+          Write-Output "✅ Your RDP tunnel is ready:"
           Write-Output "🔗 RDP Address: $url"
